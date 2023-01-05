@@ -38,7 +38,7 @@ class _CurrencyTileState extends State<CurrencyTile> {
             children: [
               widget.isHint == true
                   ? Text(
-                      widget.currency.currencyCode,
+                      widget.currency.currencyCode!,
                       style: AppTextStyles.titleWhiteMedium
                           .copyWith(fontWeight: FontWeight.bold),
                     )
@@ -46,13 +46,13 @@ class _CurrencyTileState extends State<CurrencyTile> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          widget.currency.currencyCode,
+                          widget.currency.currencyCode!,
                           style: AppTextStyles.titleWhiteMedium.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                         Text(
-                          widget.currency.currencyName,
+                          widget.currency.currencyName!,
                           style: AppTextStyles.titleWhiteMedium.copyWith(
                               fontWeight: FontWeight.normal,
                               fontSize: 12,

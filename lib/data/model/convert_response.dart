@@ -1,10 +1,11 @@
-class ConvertResponse {
+class  ConvertResponse {
   String? date;
   String? historical;
   Info? info;
   Query? query;
   num? result;
   bool? success;
+  String? message;
 
   ConvertResponse(
       {this.date,
@@ -12,7 +13,8 @@ class ConvertResponse {
       this.info,
       this.query,
       this.result,
-      this.success});
+      this.success,
+      this.message});
 
   ConvertResponse.fromJson(Map<String, dynamic> json) {
     date = json['date'];

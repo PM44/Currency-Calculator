@@ -130,11 +130,11 @@ class _SearchCurrencyBottomSheetState extends State<SearchCurrencyBottomSheet> {
   List<Currency> _searchCurrencies(String searchText) {
     if (searchText.isNotEmpty) {
       _currenciesFound = widget.allCurrency.where((element) {
-        if (element.currencyCode
+        if (element.currencyCode!
             .toLowerCase()
             .contains(searchText.toLowerCase())) {
           return true;
-        } else if (element.currencyName
+        } else if (element.currencyName!
             .toLowerCase()
             .contains(searchText.toLowerCase())) {
           return true;

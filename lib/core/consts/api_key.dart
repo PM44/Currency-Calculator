@@ -1,6 +1,6 @@
 class ApiKey {
   static String getApiKey() {
-    return 'yWQcKLYm9IeYguHtnTXQDPsclsIEKkNh';
+    return 'oBO92CvxqcbEeWyK5itJJJuDaIrWWltB';
   }
 
   static String getBaseUrl() {

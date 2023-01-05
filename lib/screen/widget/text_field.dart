@@ -11,11 +11,13 @@ class CurrencyTextField extends StatefulWidget {
       {super.key,
       required this.editingController,
       required this.index,
+      required this.allCurrency,
       required this.callbak,
       required this.itemRemoveCallback});
 
   final TextEditingController editingController;
   final int index;
+  final List<Currency> allCurrency;
   final void Function(Currency, int) callbak;
   final void Function(int) itemRemoveCallback;
 
@@ -74,7 +76,7 @@ class _CurrencyTextFieldState extends State<CurrencyTextField> {
             child: GestureDetector(
                 onTap: () => _showModalBottomSheet(true),
                 child: CurrencyTile(
-                  currency: selectedCurrency ?? _currencyBloc.currency.first,
+                  currency: selectedCurrency ?? widget.allCurrency.first,
                   isHint: true,
                 )),
           ),
