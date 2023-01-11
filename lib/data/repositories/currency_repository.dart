@@ -3,6 +3,7 @@ import 'package:currency_converter/data/api_client.dart';
 import 'package:currency_converter/data/model/convert_response.dart';
 import 'package:currency_converter/data/model/currency.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 
 class CurrencyRepository {
   late ApiClient _apiClient;
@@ -13,17 +14,16 @@ class CurrencyRepository {
 
   Future<ConvertResponse> convertCurrencies({
     required String baseCurrency,
-    required String toCurrency,
-    required double amount,
+    required List<String> toCurrency,
   }) async {
     try {
       final response = await (await _apiClient.dioCore).get(
-          '${ApiKey.getBaseUrl()}convert?to=$toCurrency&from=$baseCurrency&amount=${amount.toString()}');
+          '${ApiKey.getBaseUrl()}latest?symbols=$toCurrency&base=$baseCurrency');
       return ConvertResponse.fromJson(response.data as Map<String, dynamic>);
-    } on DioError catch(e) {
-      return ConvertResponse(success:false,message: e.response!.data['error']['message']);
+    } on DioError catch (e) {
+      return ConvertResponse(
+          success: false, message: e.response!.data['error']['message']);
     }
-
   }
 
   Future<List<Currency>> getAllCurrencies() async {
@@ -35,7 +35,9 @@ class CurrencyRepository {
       });
       return list;
     } catch (e) {
-      print(e);
+      if (kDebugMode) {
+        print(e);
+      }
     }
     return list;
   }

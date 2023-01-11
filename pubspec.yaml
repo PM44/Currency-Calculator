@@ -37,18 +37,15 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.2
   flutter_bloc: ^8.0.1
-  equatable: ^2.0.3
-  http: ^0.13.4
   dio: ^4.0.4
-  flutter_simple_calculator: ^2.2.0
   google_fonts: ^2.3.1
-  hydrated_bloc: ^8.1.0
   sqflite: ^2.2.2
   intl: ^0.17.0
   connectivity_plus: ^3.0.2
-  path_provider: ^2.0.9
 
 dev_dependencies:
+  bloc_test: ^9.1.0
+  sqflite_common_ffi:
   flutter_test:
     sdk: flutter
 

@@ -1,4 +1,4 @@
-import 'package:currency_converter/block/currency_bloc.dart';
+import 'package:currency_converter/bloc/currency_bloc/currency_bloc.dart';
 import 'package:currency_converter/core/consts/app_text_styles.dart';
 import 'package:currency_converter/data/model/currency.dart';
 import 'package:currency_converter/screen/search_currency.dart';
@@ -13,11 +13,13 @@ class CurrencyTextField extends StatefulWidget {
       required this.index,
       required this.allCurrency,
       required this.callbak,
-      required this.itemRemoveCallback});
+      required this.itemRemoveCallback,
+      this.selected});
 
   final TextEditingController editingController;
   final int index;
   final List<Currency> allCurrency;
+  final Currency? selected;
   final void Function(Currency, int) callbak;
   final void Function(int) itemRemoveCallback;
 
@@ -40,7 +42,7 @@ class _CurrencyTextFieldState extends State<CurrencyTextField> {
               value: _currencyBloc,
               child: SearchCurrencyBottomSheet(
                 isBaseCurrency: isBaseCurrency,
-                allCurrency: _currencyBloc.currency,
+                allCurrency: _currencyBloc.allCurrency,
                 callbak: (Currency currency) {
                   widget.callbak(currency, widget.index);
                   setState(() {
@@ -54,8 +56,10 @@ class _CurrencyTextFieldState extends State<CurrencyTextField> {
   @override
   void initState() {
     _currencyBloc = BlocProvider.of<CurrencyBloc>(context);
-    if (_currencyBloc.currency.isNotEmpty) {
-      selectedCurrency = _currencyBloc.currency.first;
+    if (widget.selected != null) {
+      selectedCurrency = widget.selected;
+    } else if (_currencyBloc.allCurrency.isNotEmpty) {
+      selectedCurrency = _currencyBloc.allCurrency.first;
     }
     super.initState();
   }
@@ -76,7 +80,9 @@ class _CurrencyTextFieldState extends State<CurrencyTextField> {
             child: GestureDetector(
                 onTap: () => _showModalBottomSheet(true),
                 child: CurrencyTile(
-                  currency: selectedCurrency ?? widget.allCurrency.first,
+                  currency: selectedCurrency ??
+                      widget.selected ??
+                      widget.allCurrency.first,
                   isHint: true,
                 )),
           ),

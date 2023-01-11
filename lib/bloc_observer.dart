@@ -1,6 +1,6 @@
 import 'dart:developer';
 
-import 'package:hydrated_bloc/hydrated_bloc.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 class CurrencyBlocObservable extends BlocObserver {
   @override

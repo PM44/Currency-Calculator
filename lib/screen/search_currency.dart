@@ -1,4 +1,4 @@
-import 'package:currency_converter/block/currency_bloc.dart';
+import 'package:currency_converter/bloc/currency_bloc/currency_bloc.dart';
 import 'package:currency_converter/core/consts/app_text_styles.dart';
 import 'package:currency_converter/data/model/currency.dart';
 import 'package:currency_converter/screen/widget/currency_tile.dart';
@@ -105,7 +105,8 @@ class _SearchCurrencyBottomSheetState extends State<SearchCurrencyBottomSheet> {
                         ),
                       );
                     }
-                    if (state is CurrencyLoadedState) {
+                    if (state is CurrencyLoadedState ||
+                        state is CurrencyFailedState) {
                       return GestureDetector(
                         onTap: () => _onTileTap(index),
                         child: CurrencyTile(

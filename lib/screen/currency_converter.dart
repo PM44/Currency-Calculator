@@ -1,5 +1,7 @@
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:currency_converter/block/currency_bloc.dart';
+import 'package:currency_converter/bloc/currency_bloc/currency_bloc.dart';
+import 'package:currency_converter/bloc/output_currency/output_currency_bloc.dart';
+import 'package:currency_converter/bloc/selected_currency/selected_currency_bloc.dart';
 import 'package:currency_converter/core/connection_Status.dart';
 import 'package:currency_converter/core/consts/app_text_styles.dart';
 import 'package:currency_converter/data/model/currency.dart';
@@ -20,16 +22,8 @@ class CurrencyConverter extends StatefulWidget {
 
 class _CurrencyConverterState extends State<CurrencyConverter> {
   final _currencyBloc = CurrencyBloc(currencyRepository: CurrencyRepository());
-  final _baseTextEditingController = TextEditingController();
-  final _toTextEditingController = TextEditingController();
-  List<String> operations = <String>[];
-  List<TextEditingController> editController = <TextEditingController>[];
-  List<Currency> selectedCurrency = <Currency>[];
-  List<Currency> allCurrency = <Currency>[];
-  Currency? outputCurrency;
   Map _source = {ConnectivityResult.none: false};
   final MyConnectivity _connectivity = MyConnectivity.instance;
-
   bool isOffline = false;
 
   @override
@@ -38,8 +32,6 @@ class _CurrencyConverterState extends State<CurrencyConverter> {
     _connectivity.myStream.listen((source) {
       setState(() => _source = source);
     });
-    editController.add(TextEditingController());
-    operations.add("=");
     super.initState();
   }
 
@@ -48,30 +40,39 @@ class _CurrencyConverterState extends State<CurrencyConverter> {
     super.dispose();
     _connectivity.disposeStream();
     _currencyBloc.close();
-    _baseTextEditingController.dispose();
-    _toTextEditingController.dispose();
   }
 
-  List<Widget> getTextFields() {
+  List<Widget> getTextFields(SelectedCurrencyBloc selectedCurrencyBloc) {
     List<Widget> widgets = <Widget>[];
-    if (allCurrency.isNotEmpty) {
-      for (int i = 0; i < editController.length; i++) {
-        widgets.add(CurrencyTextField(
-          index: i,
-          editingController: editController[i],
-          allCurrency: allCurrency,
-          callbak: (Currency currency, int index) {
-            selectedCurrency.insert(index, currency);
-          },
-          itemRemoveCallback: (int index) {
-            if (index != 0) {
-              setState(() {
-                selectedCurrency.removeAt(index);
-                editController.removeAt(index);
-                operations.removeAt(index);
-              });
-            }
-          },
+    List<TextEditingController> textEditingController =
+        selectedCurrencyBloc.editController;
+    if (_currencyBloc.allCurrency.isNotEmpty) {
+      for (int i = 0; i < textEditingController.length; i++) {
+        widgets.add(Column(
+          children: [
+            if (i != 0)
+              Center(
+                child: Text(
+                  selectedCurrencyBloc.operations[i],
+                  style: const TextStyle(fontSize: 16),
+                ),
+              ),
+            CurrencyTextField(
+              index: i,
+              editingController: selectedCurrencyBloc.editController[i],
+              selected: selectedCurrencyBloc.editControllerCurrency[i],
+              allCurrency: _currencyBloc.allCurrency,
+              callbak: (Currency currency, int index) {
+                selectedCurrencyBloc
+                    .add(AddCurrencyIndexEvent(index, currency));
+              },
+              itemRemoveCallback: (int index) {
+                if (index != 0) {
+                  selectedCurrencyBloc.add(RemoveCurrencyEvent(index));
+                }
+              },
+            ),
+          ],
         ));
       }
       return widgets;
@@ -96,45 +97,54 @@ class _CurrencyConverterState extends State<CurrencyConverter> {
     return Scaffold(
       body: BlocProvider(
         create: (context) => _currencyBloc..add(const GetAllCurrency()),
-        child: SafeArea(
-          child: BlocConsumer<CurrencyBloc, CurrencyState>(
-            listener: (context, state) {
-
-            },
-            builder: (context, state) {
-              print(state);
-              if (state is CurrencyLoadingState) {
-                return Stack(
-                  children:[ const Center(
-                    child: CircularProgressIndicator(),
-                  ),
-                    if(state.isScreenShown!)
-                    calculatorScreen(state, null)
-                  ]
-                );
-              }
-              if (state is CurrencyFetchedState) {
-                allCurrency = _currencyBloc.currency;
-                if (selectedCurrency.isEmpty) {
-                  selectedCurrency.add(state.allCurrency.first);
-                }
-                outputCurrency ??= state.allCurrency.first;
-                return calculatorScreen(state,null);
-              }
-              if (state is CurrencyLoadedState) {
-                return calculatorScreen(state,null);
-              } else if (state is CurrencyFailedState) {
-                return calculatorScreen(state,state.error);
-              }
-              return Container();
-            },
+        child: BlocProvider(
+          create: (context) => SelectedCurrencyBloc(),
+          child: BlocProvider(
+            create: (context) => OutputCurrencyBloc(),
+            child: SafeArea(
+              child: BlocConsumer<CurrencyBloc, CurrencyState>(
+                listener: (context, state) {
+                  if (state is CurrencyFetchedState) {
+                    BlocProvider.of<SelectedCurrencyBloc>(context).add(
+                        AddCurrencyEvent('=', _currencyBloc.allCurrency.first,
+                            TextEditingController()));
+                  }
+                },
+                builder: (context, state) {
+                  if (state is CurrencyLoadingState) {
+                    return Stack(children: [
+                      const Center(
+                        child: CircularProgressIndicator(),
+                      ),
+                      if (state.isScreenShown!)
+                        calculatorScreen(state, null,
+                            BlocProvider.of<SelectedCurrencyBloc>(context))
+                    ]);
+                  }
+                  if (state is CurrencyFetchedState) {
+                    BlocProvider.of<OutputCurrencyBloc>(context)
+                        .add(SetOutPutCurrency(state.allCurrency.first));
+                    return calculatorScreen(state, null,
+                        BlocProvider.of<SelectedCurrencyBloc>(context));
+                  }
+                  if (state is CurrencyLoadedState) {
+                    return calculatorScreen(state, null,
+                        BlocProvider.of<SelectedCurrencyBloc>(context));
+                  } else if (state is CurrencyFailedState) {
+                    return calculatorScreen(state, state.error,
+                        BlocProvider.of<SelectedCurrencyBloc>(context));
+                  }
+                  return Container();
+                },
+              ),
+            ),
           ),
         ),
       ),
     );
   }
 
-  void _showModalBottomSheet(bool isBaseCurrency) {
+  void _showModalBottomSheet(bool isBaseCurrency, OutputCurrencyBloc bloc) {
     showModalBottomSheet(
         clipBehavior: Clip.hardEdge,
         isScrollControlled: true,
@@ -144,20 +154,21 @@ class _CurrencyConverterState extends State<CurrencyConverter> {
               value: _currencyBloc,
               child: SearchCurrencyBottomSheet(
                 isBaseCurrency: isBaseCurrency,
-                allCurrency: _currencyBloc.currency,
+                allCurrency: _currencyBloc.allCurrency,
                 callbak: (Currency currency) {
-                  setState(() {
-                    outputCurrency = currency;
-                  });
+                  bloc.add(SetOutPutCurrency(currency));
                 },
               ),
             ));
   }
 
-  Widget calculatorScreen(CurrencyState currencyState,String? error) {
-    return SingleChildScrollView(
-      child:
-          Column(
+  Widget calculatorScreen(CurrencyState currencyState, String? error,
+      SelectedCurrencyBloc selectedCurrencyBloc) {
+    return BlocConsumer<SelectedCurrencyBloc, SelectedCurrencyState>(
+      listener: (context, state) {},
+      builder: (context, state) {
+        return SingleChildScrollView(
+          child: Column(
             children: [
               const SizedBox(
                 height: 16,
@@ -169,13 +180,16 @@ class _CurrencyConverterState extends State<CurrencyConverter> {
                     !isOffline ? "Offline" : "Online",
                     style: const TextStyle(color: Colors.black),
                   ),
-                  Icon(CupertinoIcons.circle_fill,color: !isOffline ?Colors.red:Colors.green,size: 16,)
+                  Icon(
+                    CupertinoIcons.circle_fill,
+                    color: !isOffline ? Colors.red : Colors.green,
+                    size: 16,
+                  )
                 ],
               ),
-
-              if (editController.isNotEmpty)
+              if (selectedCurrencyBloc.editController.isNotEmpty)
                 Column(
-                  children: getTextFields(),
+                  children: getTextFields(selectedCurrencyBloc),
                 ),
               Container(
                 margin: const EdgeInsets.only(top: 16, bottom: 16),
@@ -184,11 +198,10 @@ class _CurrencyConverterState extends State<CurrencyConverter> {
                   children: [
                     IconButton(
                       onPressed: () {
-                        setState(() {
-                          editController.add(TextEditingController());
-                          selectedCurrency.add(allCurrency.first);
-                          operations.add('+');
-                        });
+                        selectedCurrencyBloc.add(AddCurrencyEvent(
+                            '+',
+                            _currencyBloc.allCurrency.first,
+                            TextEditingController()));
                       },
                       icon: const Icon(
                         CupertinoIcons.add,
@@ -196,11 +209,10 @@ class _CurrencyConverterState extends State<CurrencyConverter> {
                     ),
                     IconButton(
                       onPressed: () {
-                        setState(() {
-                          editController.add(TextEditingController());
-                          selectedCurrency.add(allCurrency.first);
-                          operations.add('-');
-                        });
+                        selectedCurrencyBloc.add(AddCurrencyEvent(
+                            '-',
+                            _currencyBloc.allCurrency.first,
+                            TextEditingController()));
                       },
                       icon: const Icon(
                         CupertinoIcons.minus,
@@ -208,11 +220,10 @@ class _CurrencyConverterState extends State<CurrencyConverter> {
                     ),
                     IconButton(
                       onPressed: () {
-                        setState(() {
-                          editController.add(TextEditingController());
-                          selectedCurrency.add(allCurrency.first);
-                          operations.add('*');
-                        });
+                        selectedCurrencyBloc.add(AddCurrencyEvent(
+                            '*',
+                            _currencyBloc.allCurrency.first,
+                            TextEditingController()));
                       },
                       icon: const Icon(
                         CupertinoIcons.multiply,
@@ -220,11 +231,10 @@ class _CurrencyConverterState extends State<CurrencyConverter> {
                     ),
                     IconButton(
                       onPressed: () {
-                        setState(() {
-                          editController.add(TextEditingController());
-                          selectedCurrency.add(allCurrency.first);
-                          operations.add('/');
-                        });
+                        selectedCurrencyBloc.add(AddCurrencyEvent(
+                            '/',
+                            _currencyBloc.allCurrency.first,
+                            TextEditingController()));
                       },
                       icon: const Icon(
                         CupertinoIcons.divide,
@@ -233,75 +243,97 @@ class _CurrencyConverterState extends State<CurrencyConverter> {
                   ],
                 ),
               ),
-              Row(
-                children: [
-                  const SizedBox(
-                    width: 16,
-                  ),
-                  Text(
-                    "Output in",
-                    style: AppTextStyles.titleWhiteMedium
-                        .copyWith(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(
-                    width: 16,
-                  ),
-                  GestureDetector(
-                      onTap: () {
-                        _showModalBottomSheet(true);
-                      },
-                      child: CurrencyTile(
-                          currency: outputCurrency != null
-                              ? outputCurrency!
-                              : allCurrency.isNotEmpty
-                              ? allCurrency.first
-                              : Currency(
-                              currencyName: 'United Arab Emirates Dirham',
-                              currencyCode: 'AED'),
-                          isHint: true)),
-                  const SizedBox(
-                    width: 100,
-                  ),
-                  TextButton(
-                      onPressed: () {
-                        int totalOutputCurrency = 0;
-                        _currencyBloc.totalAmount=1.0;
-                        for (int i = 0; i < editController.length; i++) {
-                          if (editController[i].text != null &&
-                              editController[i].text.isNotEmpty &&
-                              double.parse(editController[i].text) > 0.0) {
-                            _currencyBloc.add(
-                              ConvertCurrenciesEvent(
-                                  amount: double.parse(
-                                      editController.elementAt(i).text),
-                                  baseCurrency:
-                                  selectedCurrency.elementAt(i).currencyCode!,
-                                  expression: operations.elementAt(i),
-                                  isSingleValue: editController.length==1,
-                                  isFirstValue: i==0,
-                                  toCurrency: outputCurrency?.currencyCode ?? ''),
-                            );
-                          } else {
-                            ScaffoldMessenger.of(context)
-                                .showSnackBar(const SnackBar(
-                              content: Text("Please select valid value"),
-                            ));
-                            break;
-                          }
-
-                          int convertedValue = 0;
-                          totalOutputCurrency =
-                              totalOutputCurrency + convertedValue;
-                        }
-                      },
-                      child:Text(
-                        "Calculate",
+              BlocConsumer<OutputCurrencyBloc, OutputCurrencyState>(
+                listener: (context, state) {},
+                builder: (context, state) {
+                  return Row(
+                    children: [
+                      const SizedBox(
+                        width: 16,
+                      ),
+                      Text(
+                        "Output in",
                         style: AppTextStyles.titleWhiteMedium.copyWith(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.blue),
-                      ))
-                ],
+                            fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(
+                        width: 16,
+                      ),
+                      state is OutputLoadedState
+                          ? GestureDetector(
+                              onTap: () {
+                                _showModalBottomSheet(
+                                    true,
+                                    BlocProvider.of<OutputCurrencyBloc>(
+                                        context));
+                              },
+                              child: CurrencyTile(
+                                  currency: BlocProvider.of<OutputCurrencyBloc>(
+                                          context)
+                                      .selectedCurrency,
+                                  isHint: true))
+                          : Container(),
+                      const SizedBox(
+                        width: 100,
+                      ),
+                      state is OutputLoadedState
+                          ? TextButton(
+                              onPressed: () {
+                                List<TextEditingController> editController =
+                                    BlocProvider.of<SelectedCurrencyBloc>(
+                                            context)
+                                        .editController;
+
+                                _currencyBloc.totalAmount = 0;
+                                for (int i = 0;
+                                    i < editController.length;
+                                    i++) {
+                                  if (editController[i].text.isNotEmpty &&
+                                      double.parse(editController[i].text) >
+                                          0.0) {
+                                    _currencyBloc.add(
+                                      ConvertCurrenciesEvent(
+                                          amount: double.parse(
+                                              editController.elementAt(i).text),
+                                          baseCurrency: BlocProvider.of<
+                                                  SelectedCurrencyBloc>(context)
+                                              .editControllerCurrency[i]
+                                              .currencyCode!,
+                                          expression: BlocProvider.of<
+                                                  SelectedCurrencyBloc>(context)
+                                              .operations[i],
+                                          isSingleValue:
+                                              editController.length == 1,
+                                          isFirstValue: i == 0,
+                                          toCurrency: state.selectedCurrency
+                                                  .currencyCode ??
+                                              ''),
+                                    );
+                                  } else {
+                                    ScaffoldMessenger.of(context)
+                                        .showSnackBar(const SnackBar(
+                                      content:
+                                          Text("Please select valid value"),
+                                    ));
+                                    break;
+                                  }
+                                }
+                                _currencyBloc.add(CalculateCurrencyEvent(
+                                    toCurrency:
+                                        state.selectedCurrency.currencyCode ??
+                                            ''));
+                              },
+                              child: Text(
+                                "Calculate",
+                                style: AppTextStyles.titleWhiteMedium.copyWith(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.blue),
+                              ))
+                          : Container()
+                    ],
+                  );
+                },
               ),
               const SizedBox(
                 height: 16,
@@ -317,7 +349,9 @@ class _CurrencyConverterState extends State<CurrencyConverter> {
                         color: Colors.red),
                   ),
                   Text(
-                    _currencyBloc.totalAmount.toString(),
+                    error != null && error.isNotEmpty
+                        ? "0.0"
+                        : _currencyBloc.totalAmount.toString(),
                     style: AppTextStyles.titleWhiteMedium.copyWith(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -325,7 +359,6 @@ class _CurrencyConverterState extends State<CurrencyConverter> {
                   ),
                 ],
               ),
-
               if (error != null && error.isNotEmpty)
                 const SizedBox(
                   height: 16,
@@ -333,8 +366,8 @@ class _CurrencyConverterState extends State<CurrencyConverter> {
               if (error != null && error.isNotEmpty) Text("Error: $error"),
             ],
           ),
-
-
+        );
+      },
     );
   }
 }

@@ -24,6 +24,16 @@ class ConvertCurrenciesEvent extends CurrencyEvent {
   List<Object> get props => [baseCurrency, toCurrency, amount, expression];
 }
 
+class CalculateCurrencyEvent extends CurrencyEvent {
+  final String toCurrency;
+
+  const CalculateCurrencyEvent({
+    required this.toCurrency,
+  });
+
+  List<Object> get props => [toCurrency];
+}
+
 class GetAllCurrency extends CurrencyEvent {
   const GetAllCurrency();
   List<Object> get props => [];
